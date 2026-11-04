@@ -1,8 +1,23 @@
 # frozen_string_literal: true
 
+require "faraday"
+require "json"
+
 require_relative "wahoo/version"
+require_relative "wahoo/configuration"
 
 module Wahoo
-  class Error < StandardError; end
-  # Your code goes here...
+  class << self
+    def configuration
+      @configuration ||= Configuration.new
+    end
+
+    def configure
+      yield(configuration)
+    end
+
+    def reset!
+      @configuration = Configuration.new
+    end
+  end
 end

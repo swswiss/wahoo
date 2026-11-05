@@ -5,6 +5,7 @@ require "json"
 
 require_relative "wahoo/version"
 require_relative "wahoo/configuration"
+require_relative "wahoo/error"
 
 module Wahoo
   class << self

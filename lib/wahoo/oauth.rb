@@ -21,7 +21,6 @@ module Wahoo
 
     module_function
 
-    # ── flux standard ──
     def authorize_url(scope:, state: nil, code_challenge: nil, code_challenge_method: nil)
       cfg = require_config!
       params = {
@@ -31,7 +30,7 @@ module Wahoo
         response_type: "code"
       }
       params[:state] = state if state
-      # PKCE (opțional)
+
       if code_challenge
         params[:code_challenge] = code_challenge
         params[:code_challenge_method] = code_challenge_method || "S256"
@@ -71,13 +70,10 @@ module Wahoo
       post_token(params)
     end
 
-    # ── PKCE helpers ──
-    # generează un verifier random valid
     def generate_code_verifier
       SecureRandom.urlsafe_base64(64).tr("=", "")
     end
 
-    # challenge S256 din verifier
     def code_challenge_for(verifier)
       digest = Digest::SHA256.digest(verifier)
       Base64.urlsafe_encode64(digest).tr("=", "")

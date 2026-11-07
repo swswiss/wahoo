@@ -8,6 +8,7 @@ require_relative "wahoo/configuration"
 require_relative "wahoo/error"
 require_relative "wahoo/connection"
 require_relative "wahoo/oauth"
+require_relative "wahoo/models/base"
 
 module Wahoo
   class << self

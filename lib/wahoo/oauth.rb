@@ -46,7 +46,7 @@ module Wahoo
         client_id:     cfg.client_id,
         redirect_uri:  cfg.redirect_uri
       }
-      # PKCE: fără secret, cu verifier. Standard: cu secret.
+
       if code_verifier
         params[:code_verifier] = code_verifier
       else

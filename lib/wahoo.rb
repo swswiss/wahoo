@@ -15,6 +15,7 @@ require_relative "wahoo/models/workout"
 require_relative "wahoo/models/route"
 require_relative "wahoo/models/user"
 require_relative "wahoo/models/power_zone"
+require_relative "wahoo/models/plan"
 
 require_relative "wahoo/data/workout_types"
 

@@ -20,6 +20,8 @@ require_relative "wahoo/models/workout_file_upload"
 
 require_relative "wahoo/data/workout_types"
 
+require_relative "wahoo/resources/base"
+
 module Wahoo
   class << self
     def configuration

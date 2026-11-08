@@ -12,6 +12,8 @@ require_relative "wahoo/conversions"
 
 require_relative "wahoo/models/base"
 require_relative "wahoo/models/workout"
+require_relative "wahoo/models/route"
+require_relative "wahoo/models/user"
 
 require_relative "wahoo/data/workout_types"
 

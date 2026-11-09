@@ -9,6 +9,7 @@ require_relative "wahoo/error"
 require_relative "wahoo/connection"
 require_relative "wahoo/oauth"
 require_relative "wahoo/conversions"
+require_relative "wahoo/client"
 
 require_relative "wahoo/models/base"
 require_relative "wahoo/models/workout"
@@ -21,6 +22,7 @@ require_relative "wahoo/models/workout_file_upload"
 require_relative "wahoo/data/workout_types"
 
 require_relative "wahoo/resources/base"
+require_relative "wahoo/resources/user"
 
 module Wahoo
   class << self

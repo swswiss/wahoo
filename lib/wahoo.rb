@@ -23,6 +23,12 @@ require_relative "wahoo/data/workout_types"
 
 require_relative "wahoo/resources/base"
 require_relative "wahoo/resources/user"
+require_relative "wahoo/resources/workouts"
+require_relative "wahoo/resources/plans"
+require_relative "wahoo/resources/routes"
+require_relative "wahoo/resources/uploads"
+require_relative "wahoo/resources/power_zones"
+require_relative "wahoo/resources/permissions"
 
 module Wahoo
   class << self

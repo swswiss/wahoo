@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "wahoo"
+require "tempfile"
 require "webmock/rspec"
 
 RSpec.configure do |config|

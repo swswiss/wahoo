@@ -30,6 +30,9 @@ require_relative "wahoo/resources/uploads"
 require_relative "wahoo/resources/power_zones"
 require_relative "wahoo/resources/permissions"
 
+require_relative "wahoo/webhooks/event"
+require_relative "wahoo/webhooks/handler"
+
 module Wahoo
   class << self
     def configuration

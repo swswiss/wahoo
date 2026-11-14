@@ -1,0 +1,46 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "wahoo"
+require "webrick"
+require "cgi"
+
+PORT = (ENV["WAHOO_AUTH_PORT"] || 8080).to_i
+REDIRECT = "http://localhost:#{PORT}/callback"
+SCOPE = ENV["WAHOO_SCOPE"] || "user_read workouts_read routes_read plans_read power_zones_read offline_data"
+
+Wahoo.configure do |c|
+  c.client_id     = ENV.fetch("WAHOO_CLIENT_ID")
+  c.client_secret = ENV.fetch("WAHOO_CLIENT_SECRET")
+  c.redirect_uri  = REDIRECT
+end
+
+url = Wahoo::OAuth.authorize_url(scope: SCOPE)
+
+puts "\nDeschide în browser (sau se deschide automat):"
+puts url
+puts
+
+system("open '#{url}'") || system("xdg-open '#{url}'") rescue nil
+
+server = WEBrick::HTTPServer.new(Port: PORT, Logger: WEBrick::Log.new(File::NULL), AccessLog: [])
+
+trap("INT") { server.shutdown }
+
+server.mount_proc "/callback" do |req, res|
+  code = req.query["code"]
+  if code
+    tokens = Wahoo::OAuth.exchange_code(code)
+    puts "\n✓ Token primit!\n\n"
+    puts "access_token:  #{tokens.access_token}"
+    puts "refresh_token: #{tokens.refresh_token}"
+    puts "expires_in:    #{tokens.expires_in}"
+    res.body = "<h2>Gata! Poți închide tab-ul și întoarce-te la terminal.</h2>"
+    Thread.new { sleep 1; server.shutdown }
+  else
+    res.body = "<h2>Lipsește codul. Încearcă din nou.</h2>"
+  end
+end
+
+puts "Aștept callback-ul pe #{REDIRECT} ...\n"
+server.start

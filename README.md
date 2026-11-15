@@ -1,43 +1,195 @@
-# Wahoo
+# wahoo-ruby
 
-TODO: Delete this and the text below, and describe your gem
-
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/wahoo`. To experiment with that code, run `bin/console` for an interactive prompt.
+A complete Ruby client for the [Wahoo Cloud API](https://cloud-api.wahooligan.com/).
+OAuth 2.0 (standard + PKCE), full CRUD for workouts, routes, plans, power zones
+and the user, file uploads, webhooks — with first-class models, automatic
+pagination, rich unit conversions, and automatic retries.
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
-
-Install the gem and add to the application's Gemfile by executing:
-
-```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+```ruby
+gem "wahoo"
 ```
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+## Configuration
 
-```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+```ruby
+Wahoo.configure do |c|
+  c.client_id     = ENV["WAHOO_CLIENT_ID"]
+  c.client_secret = ENV["WAHOO_CLIENT_SECRET"]
+  c.redirect_uri  = "https://yourapp.com/wahoo/callback"
+end
 ```
 
-## Usage
+## OAuth 2.0
 
-TODO: Write usage instructions here
+Standard flow:
 
-## Development
+```ruby
+url    = Wahoo::OAuth.authorize_url(scope: "user_read workouts_read")
+tokens = Wahoo::OAuth.exchange_code(params[:code])     # in your callback
+tokens = Wahoo::OAuth.refresh(tokens.refresh_token) if tokens.expired?
+```
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+PKCE flow (public apps, no secret):
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+```ruby
+verifier  = Wahoo::OAuth.generate_code_verifier
+challenge = Wahoo::OAuth.code_challenge_for(verifier)
 
-## Contributing
+url = Wahoo::OAuth.authorize_url(scope: "user_read workouts_read",
+                                 code_challenge: challenge)
+# store `verifier`, then in your callback:
+tokens = Wahoo::OAuth.exchange_code(params[:code], code_verifier: verifier)
+```
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/wahoo. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/[USERNAME]/wahoo/blob/main/CODE_OF_CONDUCT.md).
+## Client
+
+```ruby
+client = Wahoo::Client.new(access_token: tokens.access_token)
+```
+
+### User
+
+```ruby
+client.user.get                         # Wahoo::Models::User
+client.user.update(weight: 72, gender: 0)
+```
+
+### Workouts (full CRUD)
+
+```ruby
+client.workouts.list                    # all pages, as models
+client.workouts.list(limit: 50)
+client.workouts.get(id)
+client.workouts.create(name: "Ride", workout_token: "abc",
+                       workout_type_id: 0, starts: Time.now.iso8601, minutes: 60)
+client.workouts.update(id, name: "New name")
+client.workouts.delete(id)
+client.workouts.plans(id)               # plans attached to a workout
+client.workouts.summary(id)             # the workout summary
+```
+
+Workout helpers:
+
+```ruby
+w = client.workouts.get(id)
+w.workout_type        # "BIKING" (from workout_type_id)
+w.completed?          # has a summary?
+w.distance_km         # conversions (API returns string decimals)
+w.duration_human      # "1h 40m 12s"
+w.avg_speed_kmh
+```
+
+### Routes (full CRUD, FIT upload)
+
+```ruby
+client.routes.list
+client.routes.get(id)
+client.routes.create(file: "route.fit", external_id: "r1",
+                     provider_updated_at: Time.now.iso8601, name: "My route",
+                     start_lat: 47.15, start_lng: 27.60, distance: 45000, ascent: 340)
+client.routes.update(id, name: "Renamed")
+client.routes.delete(id)
+```
+
+### Plans (full CRUD)
+
+```ruby
+client.plans.list
+client.plans.get(id)
+client.plans.create(file: "plan.json", external_id: "p1",
+                    provider_updated_at: Time.now.iso8601)
+client.plans.update(id, filename: "plan.json", provider_updated_at: Time.now.iso8601)
+client.plans.delete(id)
+```
+
+### Power zones (full CRUD)
+
+```ruby
+client.power_zones.list
+client.power_zones.get(id)
+client.power_zones.create(ftp: 300, zone_1: 100, workout_type_id: 0)
+client.power_zones.update(id, ftp: 320)
+client.power_zones.delete(id)
+```
+
+### Workout file uploads (async)
+
+```ruby
+upload = client.uploads.create(file: "ride.fit", time_zone: "Europe/Bucharest")
+upload.status                    # "pending"
+
+# poll until processed
+upload = client.uploads.get(upload.token)
+upload.complete?                 # then upload.workout_id is available
+```
+
+### Deauthorize
+
+```ruby
+client.deauthorize               # revokes your app's access for the user
+```
+
+## Webhooks
+
+Set your webhook URL and token in the developer portal (requires `offline_data`
+scope). Then handle incoming calls:
+
+```ruby
+Wahoo.configure { |c| c.webhook_secret = "your_token" }
+
+event = Wahoo::Webhooks::Handler.verify_token!(request.raw_post)
+if event.workout_summary?
+  event.user_id                       # user.id
+  event.workout_summary.distance_km
+  event.workout                       # the nested workout
+end
+```
+
+See `examples/rails_webhook_controller.rb`.
+
+## Data types
+
+```ruby
+Wahoo::Data::WORKOUT_TYPES[0]            # "BIKING"
+Wahoo::Data::WORKOUT_TYPE_FAMILIES[0]    # "BIKING"
+Wahoo::Data::WORKOUT_TYPE_LOCATIONS[1]   # "OUTDOOR"
+```
+
+## Rate limiting & retries
+
+Wahoo sends three windows (day, hour, 5-min). The client retries automatically
+on 429 / 5xx with backoff:
+
+```ruby
+Wahoo.configure do |c|
+  c.max_retries   = 3
+  c.retry_backoff = 2
+end
+
+# inspect limits from a raw response if needed:
+# resp.rate_limit            # { day:, hour:, five_min: }
+# resp.rate_limit_remaining
+# resp.rate_limit_reset
+```
+
+## Errors
+
+```ruby
+rescue Wahoo::Unauthorized         # 401
+rescue Wahoo::Forbidden            # 403 (missing scope)
+rescue Wahoo::UnprocessableEntity  # 422 (bad params / app not approved)
+rescue Wahoo::RateLimited => e     # 429, e.retry_after
+rescue Wahoo::Error => e           # e.status, e.body
+```
+
+## CLI
+
+```bash
+WAHOO_CLIENT_ID=... WAHOO_CLIENT_SECRET=... bundle exec wahoo-oauth-token
+```
 
 ## License
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-
-## Code of Conduct
-
-Everyone interacting in the Wahoo project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/wahoo/blob/main/CODE_OF_CONDUCT.md).
+MIT
